@@ -120,8 +120,7 @@ public class RxSensorManager {
                     sensorEnabled = sensorManager.registerListener(
                             sensorEventListener,
                             sensor,
-                            samplingPeriodUs,
-                            0
+                            samplingPeriodUs
                     );
                 }
                 if (!sensorEnabled) {
