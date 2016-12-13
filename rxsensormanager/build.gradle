@@ -1,0 +1,27 @@
+apply plugin: 'com.android.library'
+apply from: '../code_quality/jacoco.gradle'
+apply from: '../code_quality/quality.gradle'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion '25.0.1'
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 25
+        versionCode 800
+        versionName "0.8.0-alpha"
+    }
+    lintOptions {
+        warningsAsErrors true
+        abortOnError true
+        lintConfig rootProject.file('code_quality/lint.xml')
+    }
+}
+
+dependencies {
+    compile 'com.android.support:support-annotations:25.0.1'
+    compile 'io.reactivex.rxjava2:rxjava:2.0.2'
+    compile 'io.reactivex.rxjava2:rxandroid:2.0.1'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.mockito:mockito-core:2.2.29'
+}
