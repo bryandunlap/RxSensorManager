@@ -325,7 +325,7 @@ public class RxSensorManager {
 
     @NonNull
     @TargetApi(Build.VERSION_CODES.N)
-    private Observable<Sensor> createDynamicSensorObservable(final DynamicSensorCallbackType type) {
+    private Observable<Sensor> createDynamicSensorObservable(@NonNull final DynamicSensorCallbackType type) {
         return Observable.create(new ObservableOnSubscribe<Sensor>() {
             @Override
             public void subscribe(final ObservableEmitter<Sensor> emitter) {
