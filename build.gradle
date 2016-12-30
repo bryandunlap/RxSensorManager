@@ -6,7 +6,6 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:2.2.3'
         classpath 'org.jacoco:org.jacoco.core:0.7.7.201606060606'
-        classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.8'
     }
 }
 
@@ -21,12 +20,6 @@ task clean(type: Delete) {
 }
 
 subprojects {
-    project.plugins.apply('net.ltgt.errorprone')
-
-    configurations.errorprone {
-        resolutionStrategy.force 'com.google.errorprone:error_prone_core:2.0.15'
-    }
-
     afterEvaluate {
         tasks.findByName('pmd').dependsOn('assemble')
         tasks.findByName('findbugs').dependsOn('assemble')

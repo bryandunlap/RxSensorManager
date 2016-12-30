@@ -45,7 +45,6 @@ import io.reactivex.disposables.Disposable;
  */
 public class RxSensorManager {
     private final SensorManager sensorManager;
-    private enum DynamicSensorCallbackType { CONNECTED, DISCONNECTED }
 
     /**
      * Public constructor.
@@ -88,61 +87,12 @@ public class RxSensorManager {
             final int samplingPeriodUs,
             final int maxReportLatencyUs
     ) {
-        return Flowable.create(new FlowableOnSubscribe<SensorEvent>() {
-            @Override
-            @TargetApi(Build.VERSION_CODES.KITKAT)
-            public void subscribe(final FlowableEmitter<SensorEvent> emitter) {
-                final Sensor sensor = sensorManager.getDefaultSensor(type);
-                if (sensor == null) {
-                    emitter.onError(new SensorNotFoundException(type));
-                    return;
-                }
-                final SensorEventListener sensorEventListener = new SensorEventListener() {
-                    @Override
-                    public void onSensorChanged(SensorEvent sensorEvent) {
-                        emitter.onNext(sensorEvent);
-                    }
-
-                    @Override
-                    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-                        // noop
-                    }
-                };
-                final boolean sensorEnabled;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    sensorEnabled = sensorManager.registerListener(
-                            sensorEventListener,
-                            sensor,
-                            samplingPeriodUs,
-                            maxReportLatencyUs
-                    );
-                } else {
-                    sensorEnabled = sensorManager.registerListener(
-                            sensorEventListener,
-                            sensor,
-                            samplingPeriodUs
-                    );
-                }
-                if (!sensorEnabled) {
-                    emitter.onError(new SensorListenerException(sensor));
-                    return;
-                }
-                emitter.setDisposable(new Disposable() {
-                    boolean disposed = false;
-
-                    @Override
-                    public void dispose() {
-                        sensorManager.unregisterListener(sensorEventListener);
-                        disposed = true;
-                    }
-
-                    @Override
-                    public boolean isDisposed() {
-                        return disposed;
-                    }
-                });
-            }
-        }, BackpressureStrategy.LATEST);
+        return createSensorEventFlowable(
+                type,
+                samplingPeriodUs,
+                maxReportLatencyUs,
+                new SensorChangedListenerFactory()
+        );
     }
 
     /**
@@ -182,26 +132,147 @@ public class RxSensorManager {
             final int samplingPeriodUs,
             final int maxReportLatencyUs
     ) {
-        return Flowable.create(new FlowableOnSubscribe<SensorAccuracyEvent>() {
+        return createSensorEventFlowable(
+                type,
+                samplingPeriodUs,
+                maxReportLatencyUs,
+                new AccuracyChangedListenerFactory()
+        );
+    }
+
+    /**
+     * Create a {@link Single} that notifies subscribers of a {@link TriggerEvent} on a given {@link Sensor}.
+     * <p>
+     * This is modeled as a {@link Single} because once the sensor detects a trigger event condition, the provided
+     * {@link TriggerEventListener} will be invoked once and then cancelled. To continue receiving trigger events, the
+     * client must call this method for each event intended to be received.
+     *
+     * @param    type  the {@link Sensor} type to request {@link TriggerEvent}s for
+     * @return   A {@link Single} that notifies subscribers of a {@link TriggerEvent} on a given {@link Sensor}.
+     * @since    0.8.0-alpha
+     */
+    @NonNull
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+    public Single<TriggerEvent> observeTrigger(final int type) {
+        return Single.create(new SingleOnSubscribe<TriggerEvent>() {
             @Override
-            @TargetApi(Build.VERSION_CODES.KITKAT)
-            public void subscribe(final FlowableEmitter<SensorAccuracyEvent> emitter) {
+            public void subscribe(final SingleEmitter<TriggerEvent> emitter) {
                 final Sensor sensor = sensorManager.getDefaultSensor(type);
                 if (sensor == null) {
                     emitter.onError(new SensorNotFoundException(type));
                     return;
                 }
-                final SensorEventListener sensorEventListener = new SensorEventListener() {
+                final TriggerEventListener triggerEventListener = new TriggerEventListener() {
                     @Override
-                    public void onSensorChanged(SensorEvent sensorEvent) {
-                        // noop
+                    public void onTrigger(TriggerEvent triggerEvent) {
+                        emitter.onSuccess(triggerEvent);
+                    }
+                };
+                final boolean sensorEnabled = sensorManager.requestTriggerSensor(triggerEventListener, sensor);
+                if (!sensorEnabled) {
+                    emitter.onError(new SensorListenerException(sensor));
+                    return;
+                }
+                emitter.setDisposable(new Disposable() {
+                    boolean disposed = false;
+
+                    @Override
+                    public void dispose() {
+                        sensorManager.cancelTriggerSensor(triggerEventListener, sensor);
+                        disposed = true;
                     }
 
                     @Override
-                    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-                        emitter.onNext(new SensorAccuracyEvent(sensor, accuracy));
+                    public boolean isDisposed() {
+                        return disposed;
                     }
-                };
+                });
+            }
+        });
+    }
+
+    /**
+     * Create an {@link Observable} that notifies subscribers of dynamic sensor connections.
+     * <p>
+     * Every time a dynamic sensor is connected, a corresponding {@link Sensor} instance is pushed to
+     * all subscribers.
+     *
+     * @return   An {@link Observable} that notifies subscribers of dynamic sensor connections.
+     * @since    0.8.0-alpha
+     */
+    @NonNull
+    @TargetApi(Build.VERSION_CODES.N)
+    public Observable<Sensor> observeDynamicSensorConnections() {
+        return createDynamicSensorObservable(new DynamicSensorConnectedCallbackFactory());
+    }
+
+    /**
+     * Create an {@link Observable} that notifies subscribers of dynamic sensor disconnections.
+     * <p>
+     * Every time a dynamic sensor is disconnected, a corresponding {@link Sensor} instance is pushed to
+     * all subscribers.
+     *
+     * @return   An {@link Observable} that notifies subscribers of dynamic sensor disconnections.
+     * @since    0.8.0-alpha
+     */
+    @NonNull
+    @TargetApi(Build.VERSION_CODES.N)
+    public Observable<Sensor> observeDynamicSensorDisconnections() {
+        return createDynamicSensorObservable(new DynamicSensorDisconnectedCallbackFactory());
+    }
+
+    @NonNull
+    @TargetApi(Build.VERSION_CODES.N)
+    private Observable<Sensor> createDynamicSensorObservable(@NonNull final DynamicSensorCallbackFactory factory) {
+        return Observable.create(new ObservableOnSubscribe<Sensor>() {
+            @Override
+            public void subscribe(final ObservableEmitter<Sensor> emitter) {
+                // No dynamic sensor discovery support is an obvious show stopper.
+                if (!sensorManager.isDynamicSensorDiscoverySupported()) {
+                    emitter.onError(new SensorDiscoveryException());
+                    return;
+                }
+
+                // Register the DynamicSensorCallback instance.
+                final SensorManager.DynamicSensorCallback callback = factory.newInstance(emitter);
+                sensorManager.registerDynamicSensorCallback(callback);
+
+                // Unregister the DynamicSensorCallback instance when a subscription is disposed of.
+                emitter.setDisposable(new Disposable() {
+                    boolean disposed = false;
+
+                    @Override
+                    public void dispose() {
+                        sensorManager.unregisterDynamicSensorCallback(callback);
+                        disposed = true;
+                    }
+
+                    @Override
+                    public boolean isDisposed() {
+                        return disposed;
+                    }
+                });
+            }
+        });
+    }
+
+    @NonNull
+    private <T> Flowable<T> createSensorEventFlowable(
+            final int type,
+            final int samplingPeriodUs,
+            final int maxReportLatencyUs,
+            @NonNull final SensorEventListenerFactory<T> factory
+    ) {
+        return Flowable.create(new FlowableOnSubscribe<T>() {
+            @Override
+            @TargetApi(Build.VERSION_CODES.KITKAT)
+            public void subscribe(final FlowableEmitter<T> emitter) {
+                final Sensor sensor = sensorManager.getDefaultSensor(type);
+                if (sensor == null) {
+                    emitter.onError(new SensorNotFoundException(type));
+                    return;
+                }
+                final SensorEventListener sensorEventListener = factory.newInstance(emitter);
                 final boolean sensorEnabled;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                     sensorEnabled = sensorManager.registerListener(
@@ -239,143 +310,94 @@ public class RxSensorManager {
         }, BackpressureStrategy.LATEST);
     }
 
-    /**
-     * Create a {@link Single} that notifies subscribers of a {@link TriggerEvent} on a given {@link Sensor}.
-     * <p>
-     * This is modeled as a {@link Single} because once the sensor detects a trigger event condition, the provided
-     * {@link TriggerEventListener} will be invoked once and then cancelled. To continue receiving trigger events, the
-     * caller must subscribe to a new {@link Single} for each event received.
-     *
-     * @param    type  the {@link Sensor} type to request {@link TriggerEvent}s for
-     * @return   A {@link Single} that notifies subscribers of a {@link TriggerEvent} on a given {@link Sensor}.
-     * @since    0.8.0-alpha
-     */
-    @NonNull
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public Single<TriggerEvent> observeTrigger(final int type) {
-        return Single.create(new SingleOnSubscribe<TriggerEvent>() {
-            @Override
-            public void subscribe(final SingleEmitter<TriggerEvent> emitter) {
-                final Sensor sensor = sensorManager.getDefaultSensor(type);
-                if (sensor == null) {
-                    emitter.onError(new SensorNotFoundException(type));
-                    return;
-                }
-                final TriggerEventListener triggerEventListener = new TriggerEventListener() {
-                    @Override
-                    public void onTrigger(TriggerEvent triggerEvent) {
-                        emitter.onSuccess(triggerEvent);
-                    }
-                };
-                final boolean sensorEnabled = sensorManager.requestTriggerSensor(
-                        triggerEventListener,
-                        sensor
-                );
-                if (!sensorEnabled) {
-                    emitter.onError(new SensorListenerException(sensor));
-                    return;
-                }
-                emitter.setDisposable(new Disposable() {
-                    boolean disposed = false;
+    private interface SensorEventListenerFactory<T> {
+        @NonNull
+        SensorEventListener newInstance(FlowableEmitter<T> emitter);
+    }
 
-                    @Override
-                    public void dispose() {
-                        sensorManager.cancelTriggerSensor(triggerEventListener, sensor);
-                        disposed = true;
-                    }
+    private static class SensorChangedListenerFactory implements SensorEventListenerFactory<SensorEvent> {
+        @NonNull
+        @Override
+        public SensorEventListener newInstance(final FlowableEmitter<SensorEvent> emitter) {
+            return new Listener(emitter);
+        }
 
-                    @Override
-                    public boolean isDisposed() {
-                        return disposed;
-                    }
-                });
+        private static class Listener implements SensorEventListener {
+            FlowableEmitter<SensorEvent> emitter;
+
+            Listener(final FlowableEmitter<SensorEvent> emitter) {
+                this.emitter = emitter;
             }
-        });
-    }
 
-    /**
-     * Create an {@link Observable} that notifies subscribers of dynamic sensor connections.
-     * <p>
-     * Every time a dynamic sensor is connected, a corresponding {@link Sensor} instance is pushed to
-     * all subscribers.
-     *
-     * @return   An {@link Observable} that notifies subscribers of dynamic sensor connections.
-     * @since    0.8.0-alpha
-     */
-    @NonNull
-    @TargetApi(Build.VERSION_CODES.N)
-    public Observable<Sensor> observeDynamicSensorConnections() {
-        return createDynamicSensorObservable(DynamicSensorCallbackType.CONNECTED);
-    }
-
-    /**
-     * Create an {@link Observable} that notifies subscribers of dynamic sensor disconnections.
-     * <p>
-     * Every time a dynamic sensor is disconnected, a corresponding {@link Sensor} instance is pushed to
-     * all subscribers.
-     *
-     * @return   An {@link Observable} that notifies subscribers of dynamic sensor disconnections.
-     * @since    0.8.0-alpha
-     */
-    @NonNull
-    @TargetApi(Build.VERSION_CODES.N)
-    public Observable<Sensor> observeDynamicSensorDisconnections() {
-        return createDynamicSensorObservable(DynamicSensorCallbackType.DISCONNECTED);
-    }
-
-    @NonNull
-    @TargetApi(Build.VERSION_CODES.N)
-    private Observable<Sensor> createDynamicSensorObservable(@NonNull final DynamicSensorCallbackType type) {
-        return Observable.create(new ObservableOnSubscribe<Sensor>() {
             @Override
-            public void subscribe(final ObservableEmitter<Sensor> emitter) {
-                // No dynamic sensor discovery support is an obvious show stopper.
-                if (!sensorManager.isDynamicSensorDiscoverySupported()) {
-                    emitter.onError(new SensorDiscoveryException());
-                    return;
-                }
-
-                // Create and register an appropriate DynamicSensorCallback instance based on the type requested.
-                final SensorManager.DynamicSensorCallback callback;
-                switch (type) {
-                    case CONNECTED:
-                        callback = new SensorManager.DynamicSensorCallback() {
-                            @Override
-                            public void onDynamicSensorConnected(Sensor sensor) {
-                                emitter.onNext(sensor);
-                            }
-                        };
-                        break;
-                    case DISCONNECTED:
-                        callback = new SensorManager.DynamicSensorCallback() {
-                            @Override
-                            public void onDynamicSensorDisconnected(Sensor sensor) {
-                                emitter.onNext(sensor);
-                            }
-                        };
-                        break;
-                    default:
-                        emitter.onError(new SensorDiscoveryException());
-                        return;
-                }
-                sensorManager.registerDynamicSensorCallback(callback);
-
-                // Unregister the DynamicSensorCallback instance when a subscription is disposed of.
-                emitter.setDisposable(new Disposable() {
-                    boolean disposed = false;
-
-                    @Override
-                    public void dispose() {
-                        sensorManager.unregisterDynamicSensorCallback(callback);
-                        disposed = true;
-                    }
-
-                    @Override
-                    public boolean isDisposed() {
-                        return disposed;
-                    }
-                });
+            public void onSensorChanged(SensorEvent sensorEvent) {
+                emitter.onNext(sensorEvent);
             }
-        });
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+                // noop
+            }
+        }
+    }
+
+    private static class AccuracyChangedListenerFactory implements SensorEventListenerFactory<SensorAccuracyEvent> {
+        @NonNull
+        @Override
+        public SensorEventListener newInstance(final FlowableEmitter<SensorAccuracyEvent> emitter) {
+            return new Listener(emitter);
+        }
+
+        private static class Listener implements SensorEventListener {
+            FlowableEmitter<SensorAccuracyEvent> emitter;
+
+            Listener(final FlowableEmitter<SensorAccuracyEvent> emitter) {
+                this.emitter = emitter;
+            }
+
+            @Override
+            public void onSensorChanged(SensorEvent sensorEvent) {
+                // noop
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+                emitter.onNext(new SensorAccuracyEvent(sensor, accuracy));
+            }
+        }
+    }
+
+    private interface DynamicSensorCallbackFactory {
+        @NonNull
+        @TargetApi(Build.VERSION_CODES.N)
+        SensorManager.DynamicSensorCallback newInstance(ObservableEmitter<Sensor> emitter);
+    }
+
+    private static class DynamicSensorConnectedCallbackFactory implements DynamicSensorCallbackFactory {
+        @NonNull
+        @TargetApi(Build.VERSION_CODES.N)
+        @Override
+        public SensorManager.DynamicSensorCallback newInstance(final ObservableEmitter<Sensor> emitter) {
+            return new SensorManager.DynamicSensorCallback() {
+                @Override
+                public void onDynamicSensorConnected(Sensor sensor) {
+                    emitter.onNext(sensor);
+                }
+            };
+        }
+    }
+
+    private static class DynamicSensorDisconnectedCallbackFactory implements DynamicSensorCallbackFactory {
+        @NonNull
+        @TargetApi(Build.VERSION_CODES.N)
+        @Override
+        public SensorManager.DynamicSensorCallback newInstance(final ObservableEmitter<Sensor> emitter) {
+            return new SensorManager.DynamicSensorCallback() {
+                @Override
+                public void onDynamicSensorDisconnected(Sensor sensor) {
+                    emitter.onNext(sensor);
+                }
+            };
+        }
     }
 }
