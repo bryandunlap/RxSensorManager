@@ -44,6 +44,7 @@ import io.reactivex.disposables.Disposable;
  * @since     0.8.0-alpha
  */
 public class RxSensorManager {
+    @NonNull
     private final SensorManager sensorManager;
 
     /**
@@ -312,30 +313,31 @@ public class RxSensorManager {
 
     private interface SensorEventListenerFactory<T> {
         @NonNull
-        SensorEventListener newInstance(FlowableEmitter<T> emitter);
+        SensorEventListener newInstance(@NonNull FlowableEmitter<T> emitter);
     }
 
     private static class SensorChangedListenerFactory implements SensorEventListenerFactory<SensorEvent> {
         @NonNull
         @Override
-        public SensorEventListener newInstance(final FlowableEmitter<SensorEvent> emitter) {
-            return new Listener(emitter);
+        public SensorEventListener newInstance(@NonNull final FlowableEmitter<SensorEvent> emitter) {
+            return new SensorChangedListener(emitter);
         }
 
-        private static class Listener implements SensorEventListener {
+        private static class SensorChangedListener implements SensorEventListener {
+            @NonNull
             FlowableEmitter<SensorEvent> emitter;
 
-            Listener(final FlowableEmitter<SensorEvent> emitter) {
+            SensorChangedListener(@NonNull final FlowableEmitter<SensorEvent> emitter) {
                 this.emitter = emitter;
             }
 
             @Override
-            public void onSensorChanged(SensorEvent sensorEvent) {
+            public void onSensorChanged(@NonNull SensorEvent sensorEvent) {
                 emitter.onNext(sensorEvent);
             }
 
             @Override
-            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            public void onAccuracyChanged(@NonNull Sensor sensor, int accuracy) {
                 // noop
             }
         }
@@ -344,24 +346,25 @@ public class RxSensorManager {
     private static class AccuracyChangedListenerFactory implements SensorEventListenerFactory<SensorAccuracyEvent> {
         @NonNull
         @Override
-        public SensorEventListener newInstance(final FlowableEmitter<SensorAccuracyEvent> emitter) {
-            return new Listener(emitter);
+        public SensorEventListener newInstance(@NonNull final FlowableEmitter<SensorAccuracyEvent> emitter) {
+            return new AccuracyChangedListener(emitter);
         }
 
-        private static class Listener implements SensorEventListener {
+        private static class AccuracyChangedListener implements SensorEventListener {
+            @NonNull
             FlowableEmitter<SensorAccuracyEvent> emitter;
 
-            Listener(final FlowableEmitter<SensorAccuracyEvent> emitter) {
+            AccuracyChangedListener(@NonNull final FlowableEmitter<SensorAccuracyEvent> emitter) {
                 this.emitter = emitter;
             }
 
             @Override
-            public void onSensorChanged(SensorEvent sensorEvent) {
+            public void onSensorChanged(@NonNull SensorEvent sensorEvent) {
                 // noop
             }
 
             @Override
-            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            public void onAccuracyChanged(@NonNull Sensor sensor, int accuracy) {
                 emitter.onNext(new SensorAccuracyEvent(sensor, accuracy));
             }
         }
@@ -370,20 +373,30 @@ public class RxSensorManager {
     private interface DynamicSensorCallbackFactory {
         @NonNull
         @TargetApi(Build.VERSION_CODES.N)
-        SensorManager.DynamicSensorCallback newInstance(ObservableEmitter<Sensor> emitter);
+        SensorManager.DynamicSensorCallback newInstance(@NonNull ObservableEmitter<Sensor> emitter);
     }
 
     private static class DynamicSensorConnectedCallbackFactory implements DynamicSensorCallbackFactory {
         @NonNull
         @TargetApi(Build.VERSION_CODES.N)
         @Override
-        public SensorManager.DynamicSensorCallback newInstance(final ObservableEmitter<Sensor> emitter) {
-            return new SensorManager.DynamicSensorCallback() {
-                @Override
-                public void onDynamicSensorConnected(Sensor sensor) {
-                    emitter.onNext(sensor);
-                }
-            };
+        public SensorManager.DynamicSensorCallback newInstance(@NonNull final ObservableEmitter<Sensor> emitter) {
+            return new DynamicSensorConnectedCallback(emitter);
+        }
+
+        @TargetApi(Build.VERSION_CODES.N)
+        private static class DynamicSensorConnectedCallback extends SensorManager.DynamicSensorCallback {
+            @NonNull
+            ObservableEmitter<Sensor> emitter;
+
+            DynamicSensorConnectedCallback(@NonNull final ObservableEmitter<Sensor> emitter) {
+                this.emitter = emitter;
+            }
+
+            @Override
+            public void onDynamicSensorConnected(@NonNull Sensor sensor) {
+                emitter.onNext(sensor);
+            }
         }
     }
 
@@ -391,13 +404,23 @@ public class RxSensorManager {
         @NonNull
         @TargetApi(Build.VERSION_CODES.N)
         @Override
-        public SensorManager.DynamicSensorCallback newInstance(final ObservableEmitter<Sensor> emitter) {
-            return new SensorManager.DynamicSensorCallback() {
-                @Override
-                public void onDynamicSensorDisconnected(Sensor sensor) {
-                    emitter.onNext(sensor);
-                }
-            };
+        public SensorManager.DynamicSensorCallback newInstance(@NonNull final ObservableEmitter<Sensor> emitter) {
+            return new DynamicSensorDisconnectedCallback(emitter);
+        }
+
+        @TargetApi(Build.VERSION_CODES.N)
+        private static class DynamicSensorDisconnectedCallback extends SensorManager.DynamicSensorCallback {
+            @NonNull
+            ObservableEmitter<Sensor> emitter;
+
+            DynamicSensorDisconnectedCallback(@NonNull final ObservableEmitter<Sensor> emitter) {
+                this.emitter = emitter;
+            }
+
+            @Override
+            public void onDynamicSensorDisconnected(@NonNull Sensor sensor) {
+                emitter.onNext(sensor);
+            }
         }
     }
 }
