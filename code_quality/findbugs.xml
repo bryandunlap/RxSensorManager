@@ -15,11 +15,12 @@
         <Class name="~.*Dagger*.*"/>
     </Match>
 
-    <!-- Do not check for non-initialized fields in tests because usually we initialize them in @Before -->
+    <!-- All bugs in test classes, except for JUnit-specific bugs -->
     <Match>
         <Class name="~.*Test"/>
-        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"
-             type="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/>
+        <Not>
+            <Bug code="IJU"/>
+        </Not>
     </Match>
 
     <!-- Ignore UPM in lambdas from Retrolambda, FindBugs does not correctly understand them -->

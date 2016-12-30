@@ -1,5 +1,7 @@
 plugins.apply('pmd')
 
+check.dependsOn 'pmd'
+
 pmd {
     toolVersion = '5.4.3'
 }
@@ -12,7 +14,10 @@ task pmd(type: Pmd) {
     source = fileTree('src/main/java')
 }
 
+
 plugins.apply('findbugs')
+
+check.dependsOn 'findbugs'
 
 task findbugs(type: FindBugs) {
     ignoreFailures = false // Fail early.
@@ -25,22 +30,26 @@ task findbugs(type: FindBugs) {
     }
 
     classes = files("${project.projectDir}/build/intermediates/classes")
-    source = fileTree('src/main/java')
+    source 'src'
+    include '**/*.java'
+    exclude '**/gen/**'
 
     // If somebody has an idea how to make this work with support libraries -> open a PR please.
     classpath = files()
 
-    excludeFilter = new File("${project.rootDir}/code_quality/findbugs.xml")
+    excludeFilter = file("${project.rootDir}/code_quality/findbugs.xml")
 }
 
+
 plugins.apply('checkstyle')
+
+check.dependsOn 'checkstyle'
 
 checkstyle {
     toolVersion = '7.3'
 }
 
 task checkstyle(type: Checkstyle) {
-    configFile rootProject.file('checkstyle.xml')
     configFile file("${project.rootDir}/code_quality/checkstyle.xml")
 
     ignoreFailures false // Fail early.

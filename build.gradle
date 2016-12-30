@@ -18,16 +18,3 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
-
-subprojects {
-    afterEvaluate {
-        tasks.findByName('pmd').dependsOn('assemble')
-        tasks.findByName('findbugs').dependsOn('assemble')
-
-        def checkTask = tasks.findByName('check')
-
-        checkTask.dependsOn('pmd')
-        checkTask.dependsOn('findbugs')
-        checkTask.dependsOn('checkstyle')
-    }
-}
