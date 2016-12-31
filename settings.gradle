@@ -1,1 +1,1 @@
-include ':rxsensormanager'
+include ':rxsensormanager', ':examples'

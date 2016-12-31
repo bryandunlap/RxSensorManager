@@ -1,6 +1,5 @@
 apply plugin: 'com.android.library'
-apply from: '../code_quality/jacoco.gradle'
-apply from: '../code_quality/quality.gradle'
+apply from: rootProject.file('gradle/quality.gradle')
 
 android {
     compileSdkVersion 25
@@ -14,7 +13,6 @@ android {
     lintOptions {
         warningsAsErrors true
         abortOnError true
-        lintConfig rootProject.file('code_quality/lint.xml')
     }
 }
 
