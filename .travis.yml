@@ -10,7 +10,7 @@ sudo: false
 jdk: oraclejdk8
 notifications:
   email: false
-script: ./gradlew build jacocoDebugReport jacocoReleaseReport --continue --stacktrace
+script: ./gradlew clean build jacocoDebugReport jacocoReleaseReport --continue --stacktrace
 after_success:
 - pip install --user codecov
 - codecov
