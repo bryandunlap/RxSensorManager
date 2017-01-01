@@ -41,7 +41,7 @@ import io.reactivex.disposables.Disposable;
  *
  * @author    Bryan Dunlap
  * @see       SensorManager
- * @since     0.8.0-alpha
+ * @since     0.8.0
  */
 public class RxSensorManager {
     @NonNull
@@ -51,7 +51,7 @@ public class RxSensorManager {
      * Public constructor.
      *
      * @param    sensorManager  a {@link SensorManager} instance to wrap
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     public RxSensorManager(@NonNull final SensorManager sensorManager) {
         this.sensorManager = sensorManager;
@@ -63,7 +63,7 @@ public class RxSensorManager {
      * @param    type  the {@link Sensor} type to request updates for
      * @param    samplingPeriodUs    the desired delay between two consecutive events in microseconds
      * @return   A {@link Flowable} that notifies subscribers of a change in a given {@link Sensor}.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     public Flowable<SensorEvent> observeSensor(final int type, final int samplingPeriodUs) {
@@ -80,7 +80,7 @@ public class RxSensorManager {
      * @param    samplingPeriodUs    the desired delay between two consecutive events in microseconds
      * @param    maxReportLatencyUs  maximum time in microseconds that events can be delayed before being reported
      * @return   A {@link Flowable} that notifies subscribers of a change in a given {@link Sensor}.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     public Flowable<SensorEvent> observeSensor(
@@ -105,7 +105,7 @@ public class RxSensorManager {
      * @param    type  the {@link Sensor} type to request accuracy updates for
      * @param    samplingPeriodUs    the desired delay between two consecutive events in microseconds
      * @return   A {@link Flowable} that notifies subscribers of a change in the accuracy of a given {@link Sensor}.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     public Flowable<SensorAccuracyEvent> observeSensorAccuracy(final int type, final int samplingPeriodUs) {
@@ -125,7 +125,7 @@ public class RxSensorManager {
      * @param    samplingPeriodUs    the desired delay between two consecutive events in microseconds
      * @param    maxReportLatencyUs  maximum time in microseconds that events can be delayed before being reported
      * @return   A {@link Flowable} that notifies subscribers of a change in the accuracy of a given {@link Sensor}.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     public Flowable<SensorAccuracyEvent> observeSensorAccuracy(
@@ -150,7 +150,7 @@ public class RxSensorManager {
      *
      * @param    type  the {@link Sensor} type to request {@link TriggerEvent}s for
      * @return   A {@link Single} that notifies subscribers of a {@link TriggerEvent} on a given {@link Sensor}.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
@@ -199,7 +199,7 @@ public class RxSensorManager {
      * all subscribers.
      *
      * @return   An {@link Observable} that notifies subscribers of dynamic sensor connections.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     @TargetApi(Build.VERSION_CODES.N)
@@ -214,7 +214,7 @@ public class RxSensorManager {
      * all subscribers.
      *
      * @return   An {@link Observable} that notifies subscribers of dynamic sensor disconnections.
-     * @since    0.8.0-alpha
+     * @since    0.8.0
      */
     @NonNull
     @TargetApi(Build.VERSION_CODES.N)

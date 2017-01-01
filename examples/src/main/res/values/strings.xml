@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">RxSensorManager Examples</string>
+    <string name="sensor_title">Sensor Events</string>
+    <string name="sensor_description">This example reads and displays raw data from the device accelerometer.</string>
+    <string name="trigger_title">Trigger Events (API Level 17)</string>
+    <string name="trigger_description">This example makes use of Sensor.TYPE_SIGNIFICANT_MOTION, which will trigger an event when \"significant motion\" is detected via the device accelerometer. Trigger events fire only once. A confirmation Toast will be displayed on event process.</string>
+    <string name="dynamic_title">Dynamic Sensors (API Level 24)</string>
+    <string name="dynamic_description">This example tracks dynamic sensor connections and disconnections. A Toast will be displayed for every (dis)connection. Some devices may not support dynamic sensor discovery and registration.</string>
 </resources>

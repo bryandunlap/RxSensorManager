@@ -1,0 +1,35 @@
+ext.versions = [
+        code                    : 800,
+        name                    : '0.8.0',
+
+        minSdk                  : 9,
+        examplesMinSdk          : 14,
+        targetSdk               : 25,
+        compileSdk              : 25,
+        buildTools              : '25.0.2',
+
+        supportLibs             : '25.1.0',
+        supportConstraintLayout : '1.0.0-beta4',
+        rxJava                  : '2.0.2',
+        rxAndroid               : '2.0.1',
+        rxLifecycle             : '2.0.1',
+        butterKnife             : '8.4.0',
+
+        junit                   : '4.12',
+        mockito                 : '2.2.29',
+]
+
+ext.libraries = [
+        supportAnnotations      : "com.android.support:support-annotations:$versions.supportLibs",
+        supportAppCompat        : "com.android.support:appcompat-v7:$versions.supportLibs",
+        supportConstraintLayout : "com.android.support.constraint:constraint-layout:$versions.supportConstraintLayout",
+
+        rxJava                  : "io.reactivex.rxjava2:rxjava:$versions.rxJava",
+        rxAndroid               : "io.reactivex.rxjava2:rxjava:$versions.rxAndroid",
+        rxLifecycle             : "com.trello.rxlifecycle2:rxlifecycle-android:$versions.rxLifecycle",
+        butterKnife             : "com.jakewharton:butterknife:$versions.butterKnife",
+        butterKnifeCompiler     : "com.jakewharton:butterknife-compiler:$versions.butterKnife",
+
+        junit                   : "junit:junit:$versions.junit",
+        mockito                 : "org.mockito:mockito-core:$versions.mockito",
+]

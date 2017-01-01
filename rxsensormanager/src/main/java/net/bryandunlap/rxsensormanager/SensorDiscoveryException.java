@@ -16,4 +16,7 @@
 package net.bryandunlap.rxsensormanager;
 
 public class SensorDiscoveryException extends Exception {
+    SensorDiscoveryException() {
+        super("Dynamic sensor discovery is not supported on this device");
+    }
 }
